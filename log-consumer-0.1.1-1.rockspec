@@ -16,7 +16,7 @@ DART provides an API data security posture dashboard for DevSecOps to continuous
 
 In addition to API Security, for developers and/or DevOps, ArecaBay’s Kong plugin can be used to monitor and log application API calls with selective object level data.
   ]],
-  homepage = "https://docs.konghq.com/hub/arecabay/ab-microsensor/",
+  homepage = "https://github.com/nainika-arecabay/kong-plugin-log-consumer",
   license = "MIT"
 }
 dependencies = {
