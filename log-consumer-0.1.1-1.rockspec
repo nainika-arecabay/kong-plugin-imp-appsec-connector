@@ -20,7 +20,7 @@ In addition to API Security, for developers and/or DevOps, ArecaBay’s Kong plu
   license = "MIT"
 }
 dependencies = {
-  "lua ~> 5.1"
+  "lua >= 5.1"
 }
 
 local pluginName = "log-consumer"
