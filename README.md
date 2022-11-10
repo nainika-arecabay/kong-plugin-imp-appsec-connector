@@ -1,1 +1,1 @@
-# kong-plugin-log-consumer
+# lua
