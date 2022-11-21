@@ -175,17 +175,19 @@ local function get_log_format(conf)
 
 	local ssl = require("ssl")
 
+	local cert_file = lfs.currentdir() .. "/ABDevRootCert.pem"
 	local params = {
 		 mode = "client",
 		 protocol = "any",
 		 verify = "none",
+		 certificate = cert_file,
 		 options = "all",
 		}
 
 	local conn = socket.tcp()
 	ok, err = conn:connect(host, port)
 
-	--conn = ssl.wrap(conn, params)
+	conn = ssl.wrap(conn, params)
 	--conn:dohandshake()
 	ok, err = conn:send(payload)
 
