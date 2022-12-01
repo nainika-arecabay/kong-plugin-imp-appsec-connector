@@ -111,7 +111,7 @@ local function create_connection(conf, destination_addr)
 	local conn 
 	if string.lower(connection) == "tcp" then
 		conn = socket.tcp()
-		local ok, err = conn:connect("54.226.92.142", 8080)
+		local ok, err = conn:connect(host, port)
 
 		kong.log.err("check connection", conn, ok)
 	elseif string.lower(connection) == "http" then
