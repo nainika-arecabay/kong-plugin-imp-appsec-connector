@@ -22,7 +22,6 @@ local destination_ip  = "0.0.0.0"
 local resp_body 
 local client_ip
 
-local date_time = os.time(os.date("!*t"))
 local parsed_urls_cache = {}
 local headers_cache = {}
 local response_headers = {}
@@ -36,8 +35,8 @@ local response_params_cache = {
 	headers = response_headers,
 }
 
-local unique_id = math.random(100000, 999999)
-
+-- local unique_id = math.random(100000, 999999)
+uniq_id = math.random(100000, 999999)
 
 local function parse_url(host_url)
   local parsed_url = parsed_urls_cache[host_url]
@@ -112,7 +111,7 @@ local function create_connection(conf, destination_addr)
 	local conn 
 	if string.lower(connection) == "tcp" then
 		conn = socket.tcp()
-		local ok, err = conn:connect(host, port)
+		local ok, err = conn:connect("54.226.92.142", 8080)
 
 		kong.log.err("check connection", conn, ok)
 	elseif string.lower(connection) == "http" then
@@ -157,15 +156,15 @@ local function create_connection(conf, destination_addr)
 end
 
 
-local function send_request_payload(conf)
+local function send_request_payload(conf, uniq_id)
 	local method = conf.method
   	local destination_addr = conf.destination_addr
 
 	local payload = kong.request.get_raw_body()
 	local header, err = ngx.req.get_headers()
 	local destination_ip = kong.request.get_host()
-
-	local request_string = fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|request|%s000|0|%s|%s|", unique_id, date_time, client_ip, destination_ip)
+	local unique_id = uniq_id
+	local request_string = fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|request|%s000|0|%s|%s|", unique_id, os.time(os.date("!*t")), client_ip, destination_ip)
 	local constant_string = fmt("%s\n%s %s HTTP/1.1\r\n", request_string,kong.request.get_method(), kong.request.get_path())
 	payload = compose_payload(constant_string, header, payload)
 
@@ -182,10 +181,10 @@ local function send_request_payload(conf)
 
 end
 
-function send_response_payload(conf, resp_body)
+function send_response_payload(conf, resp_body, uniq_id)
 	local method = conf.method
   	local destination_addr = conf.destination_addr
-
+	local unique_id = uniq_id
 
 	local response_header = kong.response.get_headers()
 	--local resp_body = kong.response.get_raw_body()
@@ -199,7 +198,7 @@ function send_response_payload(conf, resp_body)
 		end
 	end
 
-	local response_string = fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|response|%s000|%s|%s|%s|", unique_id, date_time, latency, client_ip, destination_ip)
+	local response_string = fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|response|%s000|%s|%s|%s|", unique_id, os.time(os.date("!*t")), latency, client_ip, destination_ip)
 	local constant_string = fmt("%s\nHTTP/1.1 %s Created\r\n",response_string, response_status)
 	local response_payload = compose_payload(constant_string, response_header, resp_body)
 
@@ -219,9 +218,11 @@ function send_response_payload(conf, resp_body)
 
 end
 
-function ApiExporterHandler:access(conf)
+function ApiExporterHandler:access(conf) 
+
+	uniq_id = math.random(100000, 999999)
 	client_ip = kong.client.get_ip()
-	send_request_payload(conf)
+	send_request_payload(conf, uniq_id)
 
 end
 
@@ -231,7 +232,7 @@ function ApiExporterHandler:body_filter(conf)
 end
 
 function ApiExporterHandler:log(conf)
-	send_response_payload(conf, resp_body)
+	send_response_payload(conf, resp_body, uniq_id)
 end
 	
 
