@@ -130,6 +130,7 @@ local function create_connection(conf, destination_addr)
 	if ssl_verify then
 		kong.log.err("ssl verify")
 		conn = ssl.wrap(conn, params)
+		conn:dohandshake()
 	end
 
 	--local sock = ngx.socket.tcp()
