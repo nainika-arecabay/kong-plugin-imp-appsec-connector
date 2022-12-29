@@ -19,7 +19,7 @@ local ApiExporterHandler = {
 
 local destination_ip  = "0.0.0.0"
 
-local resp_body 
+local resp_body
 local client_ip
 
 local parsed_urls_cache = {}
@@ -34,6 +34,7 @@ local response_params_cache = {
 	ssl_verify = false, 
 	headers = response_headers,
 }
+local responsestr = "{\"message\": \"Response size limit exceeded\"}"
 
 -- local unique_id = math.random(100000, 999999)
 uniq_id = math.random(100000, 999999)
@@ -47,7 +48,7 @@ local function parse_url(host_url)
 
   kong.log.err('url old', host_url)
   parsed_url = url.parse(host_url)
-  --kong.log.err('url', parsed_url, host_url)
+  kong.log.err('url', parsed_url, host_url)
   if not parsed_url.port then
     if parsed_url.scheme == "http" then
       parsed_url.port = 80
@@ -94,6 +95,8 @@ end
 
 
 local function create_connection(conf, destination_addr)
+
+	kong.log.err("destination add", destination_addr)
 	local parsed_url = parse_url(destination_addr)
   	local host = parsed_url.host
  	local port = tonumber(parsed_url.port)
@@ -105,37 +108,30 @@ local function create_connection(conf, destination_addr)
 
 	local connection = conf.connection_type
 	local ssl_verify = conf.ssl
-
+	
+	local port = conf.destination_port
 
 	kong.log.err("host, post", host, port)
 	local conn 
-	if string.lower(connection) == "tcp" then
-		conn = socket.tcp()
-		local ok, err = conn:connect(host, port)
+	conn = socket.tcp()
+	local ok, err = conn:connect(host, port)
 
-		kong.log.err("check connection", conn, ok)
-	elseif string.lower(connection) == "http" then
-		conn = http.new()
-
-	end
+	kong.log.err("check connection", conn, ok)
 
 	local params = {
 		mode = "client",
-		certificate = "/home/ubuntu/github_dir/platform/bld/conf/cert/ABRootCert.pem",
+		protocol = "any",
 		options = "all",
 		verify = "none",
-		protocol = "any"
+		certificate = "/home/ubuntu/github_dir/platform/bld/conf/cert/ABDevRootCert.pem",
 	}
 	local ssl = require("ssl")
 	if ssl_verify then
 		kong.log.err("ssl verify")
 		conn = ssl.wrap(conn, params)
 		conn:dohandshake()
+		kong.log.err("ssl conn", conn)
 	end
-
-	--local sock = ngx.socket.tcp()
-	--ok, err = sock:connect(host, port)
-	--ok, err = sock:send(payload)
 
 
 	--local httpc = http.new()
@@ -150,48 +146,44 @@ local function create_connection(conf, destination_addr)
 	--conn = ssl.wrap(conn, params)
 	--kong.log.err("ssl wrap", conn)
 	--conn:dohandshake()
-	--kong.log.err("request handshake ", conn)
+	kong.log.err("request handshake ", conn)
 	
-	return conn
+	return conn, host
 
 end
 
 
-local function send_request_payload(conf, uniq_id)
+local function send_request_payload(premature, conf, payload, header, destination_ip, method, path, uniq_id)
 	local method = conf.method
   	local destination_addr = conf.destination_addr
-
-	local payload = kong.request.get_raw_body()
-	local header, err = ngx.req.get_headers()
-	local destination_ip = kong.request.get_host()
+	
+	local host = "/api/v1/CV_LOG_1"
 	local unique_id = uniq_id
 	local request_string = fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|request|%s000|0|%s|%s|", unique_id, os.time(os.date("!*t")), client_ip, destination_ip)
-	local constant_string = fmt("%s\n%s %s HTTP/1.1\r\n", request_string,kong.request.get_method(), kong.request.get_path())
+	local constant_string = fmt("%s\n%s %s HTTP/1.1\r\n", request_string, method, path)
 	payload = compose_payload(constant_string, header, payload)
 
-	headers_cache["Content-Type"] = "text/plain"
-  	
-	params_cache.method = method
-  	params_cache.body = payload
+
+	local conn, host = create_connection(conf, destination_addr)
+	local message2 = "POST /api/v1/CV_LOG_1" .. " HTTP/1.1\r\nHost: " .. host .. "\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: " .. string.len(payload) .. "\r\n\r\n" .. payload
+	   
+	if conf.connection_type == "http" then
+		payload = message2
+	end
+
 
 	kong.log.err("request payload", payload)
-	local conn = create_connection(conf, destination_addr)
 	local ok, err = conn:send(payload)
-	--local line, err = conn:receive()
 	conn:close()
 
 end
 
-function send_response_payload(conf, resp_body, uniq_id)
+function send_response_payload(premature, conf, resp_body, response_header, destination_ip, response_status, uniq_id)
 	local method = conf.method
   	local destination_addr = conf.destination_addr
 	local unique_id = uniq_id
 
-	local response_header = kong.response.get_headers()
-	--local resp_body = kong.response.get_raw_body()
-	local destination_ip = kong.request.get_host()
-	local response_status = kong.response.get_status()
-
+	local host = "/api/v1/CV_LOG_1"
 	local latency = 0
 	for k, v in pairs(response_header) do
 		if k == 'x-kong-proxy-latency' then
@@ -199,22 +191,23 @@ function send_response_payload(conf, resp_body, uniq_id)
 		end
 	end
 
+	--kong.log.err("response", resp_body)
+
 	local response_string = fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|response|%s000|%s|%s|%s|", unique_id, os.time(os.date("!*t")), latency, client_ip, destination_ip)
 	local constant_string = fmt("%s\nHTTP/1.1 %s Created\r\n",response_string, response_status)
 	local response_payload = compose_payload(constant_string, response_header, resp_body)
 
 
-	response_headers["Content-Type"] = "text/plain"
+	local conn, host = create_connection(conf, destination_addr)
+	local message2 = "POST /api/v1/CV_LOG_1"  .. " HTTP/1.1\r\nHost: " .. host .. "\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: " .. string.len(response_payload) .. "\r\n\r\n" .. response_payload
+	   
+	if conf.connection_type == "http" then
+		response_payload = message2
+	end
 
-	response_params_cache.method = conf.method
-	response_params_cache.body = response_payload
-	
 	kong.log.err("response payload", response_payload)
 	
-	local conn = create_connection(conf, destination_addr)
-	--kong.log.err("response conn", conn)
 	local ok, err = conn:send(response_payload)
-	--local line, err = conn:receive()
 	conn:close()
 
 end
@@ -223,17 +216,55 @@ function ApiExporterHandler:access(conf)
 
 	uniq_id = math.random(100000, 999999)
 	client_ip = kong.client.get_ip()
-	send_request_payload(conf, uniq_id)
+	local payload = kong.request.get_raw_body()
+	local header, err = ngx.req.get_headers()
+	local destination_ip = kong.request.get_host()
+	local method = kong.request.get_method()
+	path = kong.request.get_path()
+	local premature
+	--send_request_payload(conf, uniq_id)
+	local ok, err = ngx.timer.at(0, send_request_payload, conf, payload, header, destination_ip, method, path,  uniq_id)
 
 end
 
+
+function ApiExporterHandler:header_filter(conf)
+	
+	local cl = ngx.var.upstream_http_content_length
+	kong.log.err("length, cl", tonumber(cl))
+	
+end
+
 function ApiExporterHandler:body_filter(conf)
+	--kong.log.err(ngx.ctx.response_body)
 	resp_body = kong.response.get_raw_body()
 --	send_response_payload(conf, resp_body)
 end
 
 function ApiExporterHandler:log(conf)
-	send_response_payload(conf, resp_body, uniq_id)
+	--kong.log.err("log response", resp_body)
+	--local resp_body = ngx.ctx.response_body
+	local response_header = kong.response.get_headers()
+	local destination_ip = kong.request.get_host()
+	local response_status = kong.response.get_status()
+	
+	local MB = 2^20
+	local resp_body_len = #resp_body
+	local responsestr = "{\"message\": \"Response size limit exceeded\", \"size\":" .. resp_body_len .. "}" 
+	kong.log.err("len", resp_body_len, "hhhhhh", MB)
+	if resp_body_len > MB then
+		
+		response_header['content-encoding'] = nil
+		--response_status = 413
+		--if 'content_encoding' in response_header then
+		--	response_header["content_encoding"] = nil
+		--end
+		resp_body =  responsestr
+	end
+	
+
+	local premature
+	local ok, err = ngx.timer.at(0, send_response_payload, conf, resp_body, response_header, destination_ip, response_status, uniq_id)
 end
 	
 
