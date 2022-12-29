@@ -17,6 +17,15 @@ local ApiExporterHandler = {
     }
 
 
+local response_status_string = {
+	["200"] = "OK",
+	['201'] =  'CREATED',
+	['202'] = 'Accepted',
+	['203'] = 'Partial Information',
+	['304'] = 'Not Modified',
+	['401'] = 'Unauthorized',
+	['403'] = 'Forbidden'
+}
 local destination_ip  = "0.0.0.0"
 
 local resp_body
@@ -101,15 +110,16 @@ local function create_connection(conf, destination_addr)
   	local host = parsed_url.host
  	local port = tonumber(parsed_url.port)
 
-  	local url = fmt("%s://%s:%d%s", parsed_url.scheme, parsed_url.host, parsed_url.port, parsed_url.path)
-  	if parsed_url.query then
-    		url = url .. "?" .. parsed_url.queryend
-	end
+  	--local url = fmt("%s://%s:%d%s", parsed_url.scheme, parsed_url.host, parsed_url.port, parsed_url.path)
+  	--if parsed_url.query then
+    	--	url = url .. "?" .. parsed_url.queryend
+	--end
 
 	local connection = conf.connection_type
 	local ssl_verify = conf.ssl
 	
 	local port = conf.destination_port
+	local host = conf.destination_addr
 
 	kong.log.err("host, post", host, port)
 	local conn 
@@ -194,7 +204,7 @@ function send_response_payload(premature, conf, resp_body, response_header, dest
 	--kong.log.err("response", resp_body)
 
 	local response_string = fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|response|%s000|%s|%s|%s|", unique_id, os.time(os.date("!*t")), latency, client_ip, destination_ip)
-	local constant_string = fmt("%s\nHTTP/1.1 %s Created\r\n",response_string, response_status)
+	local constant_string = fmt("%s\nHTTP/1.1 %s %s\r\n",response_string, response_status, response_status_string[tostring(response_status)])
 	local response_payload = compose_payload(constant_string, response_header, resp_body)
 
 

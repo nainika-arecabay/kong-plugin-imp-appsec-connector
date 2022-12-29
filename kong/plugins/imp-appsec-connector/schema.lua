@@ -16,8 +16,8 @@ return {
         type = "record",
         fields = {
           -- NOTE: any field added here must be also included in the handler's get_queue_id method
-          { destination_addr = typedefs.url({ required = true, encrypted = true }) }, -- encrypted = true is a Kong-Enterprise exclusive feature, does nothing in Kong CE
-	  { destination_port = { type = "integer", default = 8080, one_of = {80, 8080, 8443, 443 }, }, },
+          { destination_addr = {type =  'string', required = true, encrypted = true },}, -- encrypted = true is a Kong-Enterprise exclusive feature, does nothing in Kong CE
+	  { destination_port = { type = "number", default = 8080, one_of = {80, 8080, 8443, 443 }, }, },
           { method = { type = "string", default = "POST", one_of = { "POST", "PUT", "PATCH" }, }, },
           { content_type = { type = "string", default = "application/json", one_of = { "application/json" }, }, },
 	  { connection_type = {type = "string", default = "tcp", one_of = { "tcp", "http" }, }, },
