@@ -45,7 +45,6 @@ local response_params_cache = {
 }
 local responsestr = "{\"message\": \"Response size limit exceeded\"}"
 
--- local unique_id = math.random(100000, 999999)
 uniq_id = math.random(100000, 999999)
 
 local function parse_url(host_url)
@@ -110,11 +109,6 @@ local function create_connection(conf, destination_addr)
   	local host = parsed_url.host
  	local port = tonumber(parsed_url.port)
 
-  	--local url = fmt("%s://%s:%d%s", parsed_url.scheme, parsed_url.host, parsed_url.port, parsed_url.path)
-  	--if parsed_url.query then
-    	--	url = url .. "?" .. parsed_url.queryend
-	--end
-
 	local connection = conf.connection_type
 	local ssl_verify = conf.ssl
 	
@@ -143,25 +137,9 @@ local function create_connection(conf, destination_addr)
 		kong.log.err("ssl conn", conn)
 	end
 
-
-	--local httpc = http.new()
-	--local res, err = conn:request_uri(url, params_cache)
-
-	--kong.log.err("request handshake ", lfs.currentdir())
-
-	--local cert_file = lfs.currentdir() .. "/ABDevRootCert.pem"
-	---kong.log.err("dir", cert_file)
-
-	--kong.log.err("connection", ok, err, params)
-	--conn = ssl.wrap(conn, params)
-	--kong.log.err("ssl wrap", conn)
-	--conn:dohandshake()
-	kong.log.err("request handshake ", conn)
-	
 	return conn, host
 
 end
-
 
 local function send_request_payload(premature, conf, payload, header, destination_ip, method, path, uniq_id)
 	local method = conf.method
@@ -201,8 +179,6 @@ function send_response_payload(premature, conf, resp_body, response_header, dest
 		end
 	end
 
-	--kong.log.err("response", resp_body)
-
 	local response_string = fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|response|%s000|%s|%s|%s|", unique_id, os.time(os.date("!*t")), latency, client_ip, destination_ip)
 	local constant_string = fmt("%s\nHTTP/1.1 %s %s\r\n",response_string, response_status, response_status_string[tostring(response_status)])
 	local response_payload = compose_payload(constant_string, response_header, resp_body)
@@ -215,8 +191,6 @@ function send_response_payload(premature, conf, resp_body, response_header, dest
 		response_payload = message2
 	end
 
-	kong.log.err("response payload", response_payload)
-	
 	local ok, err = conn:send(response_payload)
 	conn:close()
 
@@ -232,7 +206,6 @@ function ApiExporterHandler:access(conf)
 	local method = kong.request.get_method()
 	path = kong.request.get_path()
 	local premature
-	--send_request_payload(conf, uniq_id)
 	local ok, err = ngx.timer.at(0, send_request_payload, conf, payload, header, destination_ip, method, path,  uniq_id)
 
 end
@@ -246,14 +219,10 @@ function ApiExporterHandler:header_filter(conf)
 end
 
 function ApiExporterHandler:body_filter(conf)
-	--kong.log.err(ngx.ctx.response_body)
 	resp_body = kong.response.get_raw_body()
---	send_response_payload(conf, resp_body)
 end
 
 function ApiExporterHandler:log(conf)
-	--kong.log.err("log response", resp_body)
-	--local resp_body = ngx.ctx.response_body
 	local response_header = kong.response.get_headers()
 	local destination_ip = kong.request.get_host()
 	local response_status = kong.response.get_status()
@@ -265,19 +234,12 @@ function ApiExporterHandler:log(conf)
 	if resp_body_len > MB then
 		
 		response_header['content-encoding'] = nil
-		--response_status = 413
-		--if 'content_encoding' in response_header then
-		--	response_header["content_encoding"] = nil
-		--end
 		resp_body =  responsestr
 	end
 	
-
 	local premature
 	local ok, err = ngx.timer.at(0, send_response_payload, conf, resp_body, response_header, destination_ip, response_status, uniq_id)
 end
 	
-
-
 return ApiExporterHandler
 
