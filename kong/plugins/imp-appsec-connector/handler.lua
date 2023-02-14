@@ -3,7 +3,7 @@
 --:platform: Linux
 --:synopsis: An interface to implement. Each function is to be run by Kong at the desired moment in the lifecycle of a request.
 --:copyright: (c) 2022 Imperva Inc. All rights reserved. (This is modified based on tcp-log plugin provided by Kong)
---:moduleauthor: Sekhar <contact@arecabay.com> (Nov 19, 2022)
+--:moduleauthor: Nainika <nainika.aggarwal@imperva.com> (Nov 19, 2022)
 --]]--
 
 local fmt = string.format
