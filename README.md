@@ -2,10 +2,9 @@ Install kong on ubuntu:
 
 1. Download the Kong package:
     
-    		sudo apt-get update
-  		sudo apt-get install openssl libpcre3 procps perl
-	
- 		curl -Lo kong-enterprise-edition-3.1.1.3.all.deb "https://download.konghq.com/gateway-3.x-ubuntu-$(lsb_release -sc)/pool/all/k/kong-enterprise-   edition/kong-enterprise-edition_3.1.1.3_amd64.deb"
+    	sudo apt-get update
+	sudo apt-get install openssl libpcre3 procps perl
+	curl -Lo kong-enterprise-edition-3.1.1.3.all.deb "https://download.konghq.com/gateway-3.x-ubuntu-$(lsb_release -sc)/pool/all/k/kong-enterprise-   edition/kong-enterprise-edition_3.1.1.3_amd64.deb"
 
 
 2. Install the package:
@@ -38,9 +37,9 @@ Install kong on ubuntu:
 
 5. Set up the db using the migrations cmd and then start the kong
 
-  	sudo kong migrations bootstrap
-   	sudo kong migrations up -c /etc/kong/kong.conf
-    	sudo kong start -c /etc/kong/kong.conf
+  		sudo kong migrations bootstrap
+		sudo kong migrations up -c /etc/kong/kong.conf
+		sudo kong start -c /etc/kong/kong.conf
 
 
 Steps to setup service, route and custom plugin 
