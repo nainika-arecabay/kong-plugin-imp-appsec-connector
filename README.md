@@ -2,9 +2,9 @@ Install kong on ubuntu:
 
 1. Download the Kong package:
     
-	sudo apt-get update
-    
-  	sudo apt-get install openssl libpcre3 procps perl
+    	sudo apt-get update
+    	
+	sudo apt-get install openssl libpcre3 procps perl
     
     	curl -Lo kong-enterprise-edition-3.1.1.3.all.deb "https://download.konghq.com/gateway-3.x-ubuntu-$(lsb_release -sc)/pool/all/k/kong-enterprise-   edition/kong-enterprise-edition_3.1.1.3_amd64.deb"
 
@@ -42,7 +42,7 @@ Install kong on ubuntu:
 
 5. Set up the db using the migrations cmd and then start the kong
 
-    	sudo kong migrations bootstrap
+  	sudo kong migrations bootstrap
     
     	sudo kong migrations up -c /etc/kong/kong.conf
     
@@ -53,11 +53,12 @@ Steps to setup service, route and custom plugin
 
 
 1. Install the imp-appsec-connector Kong plugin on each node in your Kong cluster via luarocks. As this plugin source is already hosted in Luarocks.org, please run the below command:
-	
+
 	luarocks install imp-appsec-connector
 
 
 2. Add to the custom_plugins list in your Kong configuration (on each Kong node):
+	
 	Path - /etc/kong/kong.conf
 
 	custom_plugins = imp-appsec-connector
@@ -75,7 +76,4 @@ Steps to setup service, route and custom plugin
 5. Plugin configuration cmd to enable on service:
 
 	curl -X POST http://localhost:8001/services/bankapp/plugins --data 'config.destination_addr=54.226.92.142' --data 'config.connection_type=tcp' --data 'config.destination_port=8080' --data 'name=imp-appsec-connector'
-
-
-
 
