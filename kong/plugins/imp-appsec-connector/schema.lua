@@ -1,8 +1,9 @@
--- This software is copyright Imperva Inc. and its licensors.
+-- This software is copyright Kong Inc. and its licensors.
 -- Use of the software is subject to the agreement between your organization
 -- and Kong Inc. If there is no such agreement, use is governed by and
 -- subject to the terms of the Kong Master Software License Agreement found
 -- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local typedefs = require "kong.db.schema.typedefs"
 local url = require "socket.url"
@@ -18,9 +19,15 @@ return {
           { destination_addr = {type =  'string', required = true, encrypted = true },}, -- encrypted = true is a Kong-Enterprise exclusive feature, does nothing in Kong CE
 	  { destination_port = { type = "number", default = 8080, one_of = {80, 8080, 8443, 443 }, }, },
           { method = { type = "string", default = "POST", one_of = { "POST", "PUT", "PATCH" }, }, },
-          { content_type = { type = "string", default = "application/json", one_of = { "application/json" }, }, },
 	  { connection_type = {type = "string", default = "tcp", one_of = { "tcp", "http" }, }, },
+	  { timeout = {type = "number", default = 6000000 }, },
+	  { max_body_size = {type = "number", default = 1048576 }, },
 	  { ssl = {type = "boolean", default = false}, },
+	  { request_body_flag = {type = "boolean", default = true}, },
+	  { response_body_flag = {type = "boolean", default = true}, },
+	  { retry_count = { type = "integer", default = 0 }, },
+	  { queue_size = { type = "integer", default = 1 }, },
+	  { flush_timeout = { type = "number", default = 2 }, },
           { custom_fields_by_lua = typedefs.lua_code },
         },
       },
