@@ -27,11 +27,10 @@ local RESPONSE_STATUS_STRING = {
   ['203'] = 'Partial Information',
   ['304'] = 'Not Modified',
   ['401'] = 'Unauthorized',
-  ['403'] = 'Forbidden'
+  ['403'] = 'Forbidden',
+  ['499'] = 'Client Closed Request'
 }
 
-local client_ip
---local resp_body
 local queues = {} -- one queue per unique plugin config
 
 local function compose_payload(constant_string, header, payload)
@@ -66,12 +65,10 @@ local function create_connection(conf)
   local port = conf.destination_port
   local host = conf.destination_addr
   local timeout = conf.timeout
-  local host = '44.212.25.66'
 
   local conn = ngx.socket.tcp()
   conn:settimeout(timeout)
   local _, err = conn:connect(host, port)
-  --local ok, err = conn:setkeepalive(1000000000)
 
   if err then
     kong.log.err(fmt("Error while connecting to host %s and port %s: %s", host, port, err))
@@ -82,9 +79,6 @@ local function create_connection(conf)
     if err then
       kong.log.err(fmt("Error while TLS handshake for connection %s for host %s and port %s: %s", conn, host, port, err))
     end
-    --conn = ssl.wrap(conn, params)
-    --conn:dohandshake()
-    --kong.log.debug("ssl conn", conn)
   end
   return conn
 
@@ -93,7 +87,7 @@ end
 local function get_request_payload(conf, payload, header, destination_ip, path, uniq_id, method)
   local destination_addr = conf.destination_addr
   local unique_id = uniq_id
-  local request_string = {fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|request|%s000|0|%s|%s|", unique_id, os.time(os.date("!*t")), client_ip, destination_ip)}
+  local request_string = {fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|request|%s000|0|%s|%s|", unique_id, os.time(os.date("!*t")), ngx.ctx.client_ip, destination_ip)}
   table_insert(request_string, fmt("%s %s HTTP/1.1", method, path))
   local request_payload = compose_payload(request_string, header, payload)
 
@@ -116,7 +110,7 @@ local function get_response_payload(conf, response_body, response_header, destin
     end
   end
 
-  local response_string = {fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|response|%s000|%s|%s|%s|", unique_id, os.time(os.date("!*t")), latency, client_ip, destination_ip)}
+  local response_string = {fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|response|%s000|%s|%s|%s|", unique_id, os.time(os.date("!*t")), latency, ngx.ctx.client_ip, destination_ip)}
   table_insert(response_string, fmt("HTTP/1.1 %s %s", response_status, RESPONSE_STATUS_STRING[tostring(response_status)]))
   local response_payload = compose_payload(response_string, response_header, response_body)
 
@@ -137,7 +131,7 @@ local function send_payload(conf, payload)--, response_payload)
       kong.log.err(fmt("Error while sending payload %s: %s", payload, err))
     end
   end
-  --conn.close()
+  conn:close()
 end
 
 local function get_queue_id(conf)
@@ -148,10 +142,9 @@ local function get_queue_id(conf)
              conf.timeout)
 end
 
-
 function ApiExporterHandler:access(conf)
   ngx.ctx.uniq_id = math.random(100000, 999999)
-  client_ip = kong.client.get_ip()
+  ngx.ctx.client_ip = kong.client.get_ip()
   local payload = ""
   if conf.request_body_flag then
     payload = kong.request.get_raw_body()
@@ -225,7 +218,7 @@ function ApiExporterHandler:log(conf)
     }
 
     local err
-    q, err = BatchQueue.new(process, opts)
+    q, err = BatchQueue.new('imp-appsec-connector', process, opts)
     if not q then
       kong.log.err("could not create queue: ", err)
     end
