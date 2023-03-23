@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 
 local typedefs = require "kong.db.schema.typedefs"
-local url = require "socket.url"
 
 return {
   name = "log-consumer",
