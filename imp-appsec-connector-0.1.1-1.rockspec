@@ -2,7 +2,7 @@ package = "imp-appsec-connector"
 version = "0.1.1-1"
 supported_platforms = {"linux", "macosx"}
 source = {
-  url = "git://github.com/nainika-arecabay/kong-plugin-log-consumer",
+  url = "git://github.com/nainika-arecabay/kong-plugin-imp-appsec-connector",
   tag = "0.1.1"
 }
 description = {
