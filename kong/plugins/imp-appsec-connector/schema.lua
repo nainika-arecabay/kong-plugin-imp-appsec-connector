@@ -7,7 +7,7 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  name = "log-consumer",
+  name = "imp-appsec-connector",
   fields = {
     { protocols = typedefs.protocols },
     { config = {
