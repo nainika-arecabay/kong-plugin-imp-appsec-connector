@@ -6,15 +6,13 @@ source = {
   tag = "0.1.1"
 }
 description = {
-  summary = "Discover, Monitor, and Secure your APIs at object/data level using this Kong Plugin as a MicroSensor.",
+  summary = "Discover, Monitor, and Secure your APIs at object/data level using this Kong Plugin",
   detailed = [[
-ArecaBay enables enterprises to Discover, Monitor, Secure APIs at object/data level.
+The Imperva API Security plugin connects Kong Gateway with the Imperva API Security service, providing continuous discovery and monitoring of APIs exposed by the API gateway. This enables security teams to protect business applications and data against unauthorized access.
 
-ArecaBay’s Kong plugin installed in the Kong cluster is one type of ArecaBay MicroSensors that are light-weight software components built to access real-time API call level data without any modification to the applications or their runtime.  They enable ArecaBay’s Dynamic API Risk Trackers (DART) and API DLP: a set of API level trackers and Data Leakage Prevention.
+The plugin operates with a very low CPU and memory footprint, avoiding any negative impact on the inline performance of the gateway or your applications.
 
-DART provides an API data security posture dashboard for DevSecOps to continuously discover and monitor APIs across all clouds with zero-impact to apps. DART’s anomaly detection enables API DLP to take policy action against highly targeted data fields and transactions. Please visit this link (https://docs.konghq.com/hub/arecabay/ab-microsensor/) for more details.
-
-In addition to API Security, for developers and/or DevOps, ArecaBay’s Kong plugin can be used to monitor and log application API calls with selective object level data.
+The Imperva API Security plugin captures API calls with request/response payloads and sends them to the Imperva API Security service for inspection. API calls are copied and streamed through Kong Gateway. You provide the API Security receiver service endpoint though the plugin’s configuration, so the API data is kept under the control of the application owner.
   ]],
   homepage = "https://github.com/nainika-arecabay/kong-plugin-log-consumer",
   license = "MIT"
