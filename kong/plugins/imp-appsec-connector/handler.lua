@@ -9,8 +9,7 @@
 local fmt = string.format
 local table_insert = table.insert
 local table_concat = table.concat
-local meta = require "kong.meta"
-local Queue = require "kong.tools.queue"
+local BatchQueue = require "kong.tools.batch_queue"
 
 local kong = kong
 local ngx = ngx
@@ -28,11 +27,10 @@ local RESPONSE_STATUS_STRING = {
   ['203'] = 'Partial Information',
   ['304'] = 'Not Modified',
   ['401'] = 'Unauthorized',
-  ['403'] = 'Forbidden'
+  ['403'] = 'Forbidden',
+  ['499'] = 'Client Closed Request'
 }
 
-local client_ip
---local resp_body
 local queues = {} -- one queue per unique plugin config
 
 local function compose_payload(constant_string, header, payload)
@@ -71,7 +69,6 @@ local function create_connection(conf)
   local conn = ngx.socket.tcp()
   conn:settimeout(timeout)
   local _, err = conn:connect(host, port)
-  --local ok, err = conn:setkeepalive(1000000000)
 
   if err then
     kong.log.err(fmt("Error while connecting to host %s and port %s: %s", host, port, err))
@@ -82,9 +79,6 @@ local function create_connection(conf)
     if err then
       kong.log.err(fmt("Error while TLS handshake for connection %s for host %s and port %s: %s", conn, host, port, err))
     end
-    --conn = ssl.wrap(conn, params)
-    --conn:dohandshake()
-    --kong.log.debug("ssl conn", conn)
   end
   return conn
 
@@ -93,7 +87,7 @@ end
 local function get_request_payload(conf, payload, header, destination_ip, path, uniq_id, method)
   local destination_addr = conf.destination_addr
   local unique_id = uniq_id
-  local request_string = {fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|request|%s000|0|%s|%s|", unique_id, os.time(os.date("!*t")), client_ip, destination_ip)}
+  local request_string = {fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|request|%s000|0|%s|%s|", unique_id, os.time(os.date("!*t")), ngx.ctx.client_ip, destination_ip)}
   table_insert(request_string, fmt("%s %s HTTP/1.1", method, path))
   local request_payload = compose_payload(request_string, header, payload)
 
@@ -116,7 +110,7 @@ local function get_response_payload(conf, response_body, response_header, destin
     end
   end
 
-  local response_string = {fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|response|%s000|%s|%s|%s|", unique_id, os.time(os.date("!*t")), latency, client_ip, destination_ip)}
+  local response_string = {fmt("<CVLOG907A3>|CV_LOG_1|kong|%s|response|%s000|%s|%s|%s|", unique_id, os.time(os.date("!*t")), latency, ngx.ctx.client_ip, destination_ip)}
   table_insert(response_string, fmt("HTTP/1.1 %s %s", response_status, RESPONSE_STATUS_STRING[tostring(response_status)]))
   local response_payload = compose_payload(response_string, response_header, response_body)
 
@@ -130,17 +124,14 @@ local function get_response_payload(conf, response_body, response_header, destin
 end
 
 local function send_payload(conf, payload)--, response_payload)
-    kong.log.err(payload)
-    local conn = create_connection(conf)
-    for _,data in pairs(payload) do
-      local _, err = conn:send(data)
-      if err then
-        kong.log.err(fmt("Error while sending payload %s: %s", payload, err))
-	return false
-      end
+  local conn = create_connection(conf)
+  for _,data in pairs(payload) do
+    local _, err = conn:send(data)
+    if err then
+      kong.log.err(fmt("Error while sending payload %s: %s", payload, err))
     end
-    return true 
-  --conn.close()
+  end
+  conn:close()
 end
 
 local function get_queue_id(conf)
@@ -151,10 +142,9 @@ local function get_queue_id(conf)
              conf.timeout)
 end
 
-
 function ApiExporterHandler:access(conf)
   ngx.ctx.uniq_id = math.random(100000, 999999)
-  client_ip = kong.client.get_ip()
+  ngx.ctx.client_ip = kong.client.get_ip()
   local payload = ""
   if conf.request_body_flag then
     payload = kong.request.get_raw_body()
@@ -195,65 +185,6 @@ function ApiExporterHandler:body_filter(conf)
   end
 end
 
-local function load_kong_new_version(conf, request_payload, response_payload)
-  local Queue = require "kong.tools.queue"
-  local queue_conf =              -- configuration for the queue itself (defaults shown unless noted)
-  {
-    name = "example",           -- name of the queue (required)
-    log_tag = "identifyme",     -- tag string to identify plugin or application area in logs
-    max_batch_size = 1,        -- maximum number of entries in one batch (default 1)
-    max_coalescing_delay = 1,   -- maximum number of seconds after first entry before a batch is sent
-    max_entries = 10000,           -- maximum number of entries on the queue (default 10000)
-    --max_bytes = 100,            -- maximum number of bytes on the queue (default nil)
-    initial_retry_delay = 0.01, -- initial delay when retrying a failed batch, doubled for each subsequent retry
-    max_retry_time = 60,        -- maximum number of seconds before a failed batch is dropped
-    max_retry_delay = 60,       -- maximum delay between send attempts, caps exponential retry
-  }
-  --local queue_conf = Queue.get_plugin_params("imperva-apisec-connector", conf, get_queue_id(conf))
-  --kong.log.err(response_payload)
-  local ok, err = Queue.enqueue(
-    queue_conf,
-    send_payload,
-    conf,
-    request_payload
-  )
-  local ok, err = Queue.enqueue(queue_conf, send_payload, conf, response_payload)
-  if not ok then
-    kong.log.err("Failed to enqueue log entry to log server: ", err)
-  end
-end
-
-local function load_kong_old_version(conf, request_payload, response_payload)
-  local BatchQueue = require "kong.tools.batch_queue"
-  --kong.log.err(request_payload)
-  --kong.log.err(response_payload)
-  local queue_id = get_queue_id(conf)
-
-  local q = queues[queue_id]
-  if not q then
-    local batch_max_size =  conf.queue_size or 1
-    local process = function(entries)
-      kong.log.err(entries)
-      return send_payload(conf, entries)
-    end
-    local opts = {
-      retry_count    = conf.retry_count,
-      flush_timeout  = conf.flush_timeout,
-      batch_max_size = batch_max_size,
-      process_delay  = 0,
-    }
-
-    local err
-    q, err = BatchQueue.new('imp-apisec-connector', process, opts)
-    if not q then
-      kong.log.err("could not create queue: ", err)
-    end
-    queues[queue_id] = q
-  end
-  q:add(request_payload)
-  q:add(response_payload)
-end
-
 function ApiExporterHandler:log(conf)
   local response_header = kong.response.get_headers()
   local destination_ip = kong.request.get_host()
@@ -271,31 +202,30 @@ function ApiExporterHandler:log(conf)
 
   local response_payload = get_response_payload(conf, ngx.ctx.resp_body, response_header, destination_ip, response_status, ngx.ctx.uniq_id)
   local request_payload = ngx.ctx.request_body
-  local queue_conf =              -- configuration for the queue itself (defaults shown unless noted)
-  {
-    name = "example",           -- name of the queue (required)
-    log_tag = "identifyme",     -- tag string to identify plugin or application area in logs
-    max_batch_size = 1,        -- maximum number of entries in one batch (default 1)
-    max_coalescing_delay = 1,   -- maximum number of seconds after first entry before a batch is sent
-    max_entries = 10000,           -- maximum number of entries on the queue (default 10000)
-    --max_bytes = 100,            -- maximum number of bytes on the queue (default nil)
-    initial_retry_delay = 0.01, -- initial delay when retrying a failed batch, doubled for each subsequent retry
-    max_retry_time = 60,        -- maximum number of seconds before a failed batch is dropped
-    max_retry_delay = 60,       -- maximum delay between send attempts, caps exponential retry
-  }
-  --local queue_conf = Queue.get_plugin_params("imperva-apisec-connector", conf, get_queue_id(conf))
-  --kong.log.err(response_payload)
-  local ok, err = Queue.enqueue(
-    queue_conf,
-    send_payload,
-    conf,
-    request_payload
-  )
-  local ok, err = Queue.enqueue(queue_conf, send_payload, conf, response_payload)
-  if not ok then
-    kong.log.err("Failed to enqueue log entry to log server: ", err)
-  end
-end
 
+  local queue_id = get_queue_id(conf)
+  local q = queues[queue_id]
+  if not q then
+    local batch_max_size =  conf.queue_size or 1
+    local process = function(entries)
+      return send_payload(conf, entries)
+    end
+    local opts = {
+      retry_count    = conf.retry_count,
+      flush_timeout  = conf.flush_timeout,
+      batch_max_size = batch_max_size,
+      process_delay  = 0,
+    }
+
+    local err
+    q, err = BatchQueue.new('imp-appsec-connector', process, opts)
+    if not q then
+      kong.log.err("could not create queue: ", err)
+    end
+    queues[queue_id] = q
+  end
+  q:add(request_payload)
+  q:add(response_payload)
+end
 
 return ApiExporterHandler

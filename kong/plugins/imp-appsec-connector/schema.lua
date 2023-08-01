@@ -5,10 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 
 local typedefs = require "kong.db.schema.typedefs"
-local url = require "socket.url"
 
 return {
-  name = "log-consumer",
+  name = "imp-appsec-connector",
   fields = {
     { protocols = typedefs.protocols },
     { config = {
