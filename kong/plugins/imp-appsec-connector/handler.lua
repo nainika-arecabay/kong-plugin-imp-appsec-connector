@@ -65,8 +65,8 @@ local function create_connection(conf)
   local port = conf.destination_port
   local host = conf.destination_addr
   local timeout = conf.timeout
-  --local conn = ngx.socket.tcp()
-  local conn = socket.tcp()
+  local conn = ngx.socket.tcp()
+  --local conn = socket.tcp()
   conn:settimeout(timeout)
   local _, err = conn:connect(host, port)
 
@@ -220,7 +220,7 @@ function ApiExporterHandler:log(conf)
     }
 
     local err
-    q, err = BatchQueue.new('imp-appsec-connector', process, opts)
+    q, err = BatchQueue.new(process, opts)
     if not q then
       kong.log.err("could not create queue: ", err)
     end
@@ -243,7 +243,7 @@ function ApiExporterHandler:log(conf)
     }
 
     local err
-    q1, err = BatchQueue.new('imp-appsec-connector', process, opts)
+    q1, err = BatchQueue.new(process, opts)
     if not q then
       kong.log.err("could not create queue: ", err)
     end
