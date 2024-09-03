@@ -5,9 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 
 local typedefs = require "kong.db.schema.typedefs"
+local url = require "socket.url"
 
 return {
-  name = "imp-appsec-connector",
+  name = "log-consumer",
   fields = {
     { protocols = typedefs.protocols },
     { config = {
@@ -15,7 +16,7 @@ return {
         fields = {
           -- NOTE: any field added here must be also included in the handler's get_queue_id method
           { destination_addr = {type =  'string', required = true, encrypted = true },}, -- encrypted = true is a Kong-Enterprise exclusive feature, does nothing in Kong CE
-	  { destination_port = { type = "number", required = true, default = 8080 }, },
+	  { destination_port = { type = "number", required = true, default = 8080, }, },
           { method = { type = "string", default = "POST", one_of = { "POST", "PUT", "PATCH" }, }, },
 	  { connection_type = {type = "string", default = "tcp", one_of = { "tcp", "http" }, }, },
 	  { timeout = {type = "number", default = 6000000 }, },
