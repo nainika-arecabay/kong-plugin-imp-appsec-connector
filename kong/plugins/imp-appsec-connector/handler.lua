@@ -209,8 +209,6 @@ local function load_kong_new_version(conf, request_payload, response_payload)
     max_retry_time = 60,        -- maximum number of seconds before a failed batch is dropped
     max_retry_delay = 60,       -- maximum delay between send attempts, caps exponential retry
   }
-  --local queue_conf = Queue.get_plugin_params("imperva-apisec-connector", conf, get_queue_id(conf))
-  --kong.log.err(response_payload)
   local ok, err = Queue.enqueue(
     queue_conf,
     send_payload,
