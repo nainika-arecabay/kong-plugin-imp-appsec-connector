@@ -280,6 +280,7 @@ function ApiExporterHandler:log(conf)
     initial_retry_delay = 0.01, -- initial delay when retrying a failed batch, doubled for each subsequent retry
     max_retry_time = 60,        -- maximum number of seconds before a failed batch is dropped
     max_retry_delay = 60,       -- maximum delay between send attempts, caps exponential retry
+    concurrency_limit = 1
   }
   --local queue_conf = Queue.get_plugin_params("imperva-apisec-connector", conf, get_queue_id(conf))
   --kong.log.err(response_payload)
